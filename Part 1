@@ -1,0 +1,169 @@
+# Verilog-hardware
+It simulates simple hardware programming coded in Verilog
+// File: Pg11.v
+// Author: Dr. Richard Goodrum
+// Module
+// Clock: A module which periodically changes the output signal
+// PC: Module that fetches an address from memory and increments it
+// Memory: Contains addresses and instructions in meory to be incremented and executed
+// Adder: Used by PC to incremented the instructions fetched from memory
+// main: Used to test these modules working together to increment an address from memory
+
+	
+ // Module Name: main
+//Author: Amine Benelbar
+// Main to test modules
+// Ports: It has no ports since the main primarily serves as the test module that runs the other modules
+// (O/P) address. Reg. Address of instruction to be displayed
+// (I/P) instruction. Wire. The current value read from memory
+// (I/P) clk. wire. It is the clock of the program.
+
+module main;
+
+wire clk; // Wire for clock
+wire[31:0] address; // Wire for address
+wire [31:0] instruction; // wire for instruction
+wire [31:0] FOUR; // wire for instruction
+//assign FOUR = 4;
+wire [31:0] outputAddress;
+//wire [31:0] memory[0:15]; // Instruction from memory to be displayed
+//integer i;
+
+
+ 	initial
+		begin
+		  $readmemh( "memory.hex", im.memory ); // memory.memory does not work
+			$monitor($time,,"monitor Address %x,outputAddress: %x", address, outputAddress);
+		end
+// Instantiate the modules
+Clock co(clk);
+PC pc(address,outputAddress,clk);
+Adder add(outputAddress, address, 4);		
+
+always @(posedge clk)
+begin
+	$display("address: %b", address);
+end
+Instruction im(instruction, address, clk);	// File had to ve read in the Instruction module as arrays cannot be passed as ports. The memoroy array had to be defined there and the main could
+always@(posedge clk)
+begin
+#300 $finish;
+end
+endmodule // End of code for this module.
+
+
+
+// Module Name: Clock
+//Author: Amine Benelbar
+// It is suppose to simulate the clock of the program. It establishes the time of the program. 
+// Clocks generate a signal on a port which can be input to other modules for coordination purposes.
+// (O/P) clock. Reg. It is the clock of the program.	
+		
+module Clock( clock );		// Establish the name of the module and ports.
+/*
+ *	LO represents the number of ticks during which the output will be low.
+ *  HI represents the number of ticks during which the output will be high.
+ */
+	parameter LO = 10, HI = 10;
+	output reg clock;			// Establish a storage location for the oscillating output signal.
+
+	initial						// Loop structure which executes only once during start-up.
+		clock = 0;				// clock is intended to start as a low value.
+
+	always						// Loop structure which executes continuously after start-up.
+		begin					// Only a code block within the loop.
+			#LO	clock = ~clock;	// Toggle the value of clock after LO ticks.
+			#HI	clock = ~clock;	// Toggle the value of clock after HI ticks.
+		end						// Close the code block within the loop.
+
+endmodule						// End of code for this module.
+
+ // Module Name: PC
+//Author: Amine Benelbar
+// PC, which stands for Program Counter that gets instructions from the Memory module displays the address of the respective module
+// It is supposed to simulate a Program Counter in hardware
+// Ports: (O/P) address. Reg. Address of instruction to be displayed
+// (I/P) instruction. Wire. The current value read from memory
+// (I/P) clock. wire. It is the clock of the program.
+
+module PC (address, outputAddress, clock);
+input wire[31:0] outputAddress; // How do we know if a port is a wire or should be a register
+output reg [31:0] address; // Holds the instructions in the memory module; Reg variables cannot be inputs
+input  wire clock;  // Storage location for clock
+integer i;
+
+	initial
+		begin
+			address = 0; // Instantiate the first address
+		end
+
+
+	always @(posedge clock) 
+	begin
+		address <= outputAddress; // Uses adder to increment address
+	end
+
+endmodule
+
+// Module Name: Instruction
+//Author: Amine Benelbar
+// The module initially reads a file and puts it into memory. Whenever clock changes the instruction is supposed to 
+// get assigned the next item in memory
+// It is supposed to simulate Instruction Memory
+// Ports: address (I/P) Type: wire
+// instruction (O/P) Type: Reg: Gets assigned the next item in memory whenever clock changes
+// clock (I/P) Type: Wire: It is the clock that the next instruction depends on to get assigned a value
+
+module Instruction (instruction, address, clock);
+
+ reg[31:0] memory[0:15]; // Instruction from memory to be displayed *******
+output reg [31:0] instruction;
+input wire[31:0] address;
+input wire clock;  // Storage location for clock
+ reg[31:0] i;
+
+ 	initial
+		begin
+		  i = 0;
+/* 		  $readmemh( "memory.hex", memory );
+		  instruction = 0; // Instantiate first instruction */
+		end 
+
+	always @(posedge clock) // Instruction is shown every time clock changes just like the rest of the modules do
+	begin
+		 if( i<16)
+		begin
+		  i = i +1;
+		  if( memory[i] )
+		  begin
+			$display( "instruction[%d] = %x", i, memory[i] );
+			instruction <= memory[i];
+		  end
+		 end
+	end	 
+	
+		
+endmodule
+// #100 $finish
+ // Module Name: Adder
+//Author: Amine Benelbar
+// The module increments the address by 4 whenever the current address changes. It is supposed to simulate an adder
+// Ports: address (O/P) Type: reg
+// instruction (I/P) Type: Wire: Whenever instruction changes, the address changes
+// clock (I/P) Type: Wire: It is the clock
+ 
+ module Adder (outputAddress, address, FOUR);
+input wire[31:0] address; // wire elements cannot be used as the left-hand side of an = or <= sign in an always@ block. Needs to be a reg. If adder as when it was a wire it could not display nor even change the value of address
+//input wire [31:0] instruction; // Contains current instruction
+output wire[31:0] outputAddress;
+input wire[31:0] FOUR;
+	
+		
+
+		
+		assign outputAddress = (address + FOUR); // Whenever instruction changes the address changes/ address = (address + FOUR); command made the adder essentially useless
+		
+
+endmodule
+
+// Adder had to be a sequential program as the wires would not be able to save the incremented values from the adder to be displayed by the PC
